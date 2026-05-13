@@ -1,0 +1,36 @@
+{% extends "common/base.html" %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+{% block title %}
+Allocation Blueprint Detail
+{% endblock %}
+
+
+{% block content %}
+
+<div class="mb-3">
+  <h2>Allocation Blueprint Detail</h2>
+  <hr>
+</div>  
+
+<div class="card mb-3">
+  <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm">
+          <tr>
+            <th scope="row" class="text-nowrap">Resource:</th>
+            <td>{{ allocation_blueprint.resource }}</td>
+          </tr>
+          {% for attr in allocation_blueprint.allocationattributeblueprint_set.all %}
+          <tr>
+            <th scope="row" class="text-nowrap">{{ attr.allocation_attribute_type.name }}:</th>
+            <td>{{ attr.value }}</td>
+          </tr>
+          {% endfor %}
+        </table>
+      </div>
+  </div>
+</div>
+
+{% endblock %}

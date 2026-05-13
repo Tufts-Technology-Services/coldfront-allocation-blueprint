@@ -1,0 +1,14 @@
+{% extends "common/base.html" %}
+{% load crispy_forms_tags %}
+{% load static %}
+
+
+{% block title %}
+Allocation Blueprint Form
+{% endblock %}
+
+
+{% block content %}
+ {{ form|crispy }}
+
+{% endblock %}

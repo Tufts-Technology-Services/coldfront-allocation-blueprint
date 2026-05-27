@@ -1,6 +1,7 @@
+import importlib
 import logging
-
 from django.apps import AppConfig
+from .constants import BLUEPRINT_ENABLE_SIGNALS
 
 logger = logging.getLogger(__name__)
 
@@ -13,4 +14,6 @@ class AllocationBlueprintConfig(AppConfig):
     name = "allocation_blueprint"
 
     def ready(self):
-        pass
+        if BLUEPRINT_ENABLE_SIGNALS:
+            logger.info("Allocation blueprint signals are enabled. Importing signal handlers.")
+            importlib.import_module("allocation_blueprint.signals")

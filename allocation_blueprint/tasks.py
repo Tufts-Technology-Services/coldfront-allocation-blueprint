@@ -18,7 +18,7 @@ def apply_blueprint(allocation_id):
             if not AllocationAttribute.objects.filter(allocation=allocation, allocation_attribute_type=attribute_blueprint.allocation_attribute_type).exists():
                 AllocationAttribute.objects.create(
                     allocation_attribute_type=attribute_blueprint.allocation_attribute_type,
-                    value=get_attribute_value(allocation, attribute_blueprint),
+                    value=get_attribute_value(allocation.id, attribute_blueprint.value),
                     allocation=allocation)
         logger.info(f"Created allocation attributes for allocation {allocation.id} based on blueprint {blueprint.id}")
     else:

@@ -4,24 +4,21 @@ from coldfront.core.resource.models import ResourceAttribute
 from coldfront.core.allocation.models import Allocation
 
 
-def render_template_string(template_string, context=None):
-    """
-    Renders a template string with the given context.
-    This utility function uses Django's template engine to render a string as a template.
-
-    :param template_string: The template string to render.
-    :param context: A dictionary of context variables to use in the template.
-    :return: The rendered template as a string.
-    """
-    return template_string.format(**context)
-
-
-def get_context(template_string, allocation_id):
+def render_template_string(template_string, allocation_id):
     matches = re.findall(r'\{(.*?)\}', template_string)
-    context = {}
+    context = []
     for match in matches:
-        context[match] = parse_context_reference(match, allocation_id)
-    return context
+        context.append((match, parse_context_reference(match, allocation_id)))
+    # Extract the key inside braces and return the value from the dict
+    def replace_func(match):
+        key = match.group(1) # Contents of the capture group ([^}]+)
+        for context_key, context_value in context:
+            if context_key == key:
+                return context_value
+        return match.group(0)
+    # ([^}]+) matches one or more characters that are NOT a closing brace
+    new_text = re.sub(r'\{([^}]+)\}', replace_func, template_string)
+    return new_text
 
 
 def parse_context_reference(reference, allocation_id):
@@ -63,7 +60,6 @@ def get_attribute_value(allocation_id, attribute_blueprint_value):
     :return: The rendered attribute value as a string.
     """
     if '{' in attribute_blueprint_value and '}' in attribute_blueprint_value:
-        context = get_context(attribute_blueprint_value, allocation_id)
-        return render_template_string(attribute_blueprint_value, context)
+        return render_template_string(attribute_blueprint_value, allocation_id)
     else:
         return attribute_blueprint_value

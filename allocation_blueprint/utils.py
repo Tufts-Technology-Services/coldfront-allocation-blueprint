@@ -42,12 +42,12 @@ def parse_context_reference(reference, allocation_id):
         raise ValueError(f"Invalid model name in context reference: {model_name}. Expected 'project' or 'resource'.")
     allocation = Allocation.objects.get(id=allocation_id)
     if model_name == 'project':
-        attribute_match = ProjectAttribute.objects.filter(project=allocation.project, project_attribute_type__name__iexact=attribute_name)
+        attribute_match = ProjectAttribute.objects.filter(project=allocation.project, proj_attr_type__name__iexact=attribute_name)
         if not attribute_match.exists():
             raise ValueError(f"Project attribute '{attribute_name}' not found for project '{allocation.project.name}'.")
         return attribute_match.first().value
     elif model_name == 'resource':
-        attribute_match = ResourceAttribute.objects.filter(resource=allocation.get_parent_resource, resource_attribute_type__name=attribute_name)
+        attribute_match = ResourceAttribute.objects.filter(resource=allocation.get_parent_resource, resource_attribute_type__name__iexact=attribute_name)
         if not attribute_match.exists():
             raise ValueError(f"Resource attribute '{attribute_name}' not found for resource '{allocation.get_parent_resource.name}'.")
         return attribute_match.first().value

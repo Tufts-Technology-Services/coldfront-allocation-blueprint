@@ -24,6 +24,7 @@ def apply_blueprint(allocation_id):
                 else:
                     AllocationAttribute.objects.create(
                         allocation_attribute_type=attribute_blueprint.allocation_attribute_type,
+                        value="",
                         allocation=allocation)
         logger.info(f"Created allocation attributes for allocation {allocation.id} based on blueprint {blueprint.id}")
     else:

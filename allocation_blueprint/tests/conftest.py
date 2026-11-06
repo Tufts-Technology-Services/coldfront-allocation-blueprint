@@ -12,6 +12,8 @@ from coldfront.core.project.models import AttributeType as ProjectAttributeTypeB
 from coldfront.core.project.models import Project, ProjectAttribute, ProjectAttributeType, ProjectStatusChoice
 from coldfront.core.resource.models import Resource, ResourceType
 
+from allocation_blueprint.models import AllocationBlueprint
+
 
 @pytest.fixture
 def project(db):
@@ -72,6 +74,35 @@ def make_project_attribute(project):
             )[0],
             project=project,
             value=value,
+        )
+
+    return _make
+
+
+@pytest.fixture
+def make_blueprint(make_attribute_type):
+    """A blueprint for the resource, with {attribute type name: initial value}."""
+
+    def _make(resource, attributes):
+        blueprint = AllocationBlueprint.objects.create(resource=resource)
+        for name, value in attributes.items():
+            blueprint.allocationattributeblueprint_set.create(
+                allocation_attribute_type=make_attribute_type(name), value=value
+            )
+        return blueprint
+
+    return _make
+
+
+@pytest.fixture
+def make_resource(db):
+    """A resource of the named resource type."""
+
+    def _make(name, type_name="Storage"):
+        return Resource.objects.create(
+            resource_type=ResourceType.objects.get_or_create(name=type_name, description=type_name)[0],
+            name=name,
+            description="a resource",
         )
 
     return _make

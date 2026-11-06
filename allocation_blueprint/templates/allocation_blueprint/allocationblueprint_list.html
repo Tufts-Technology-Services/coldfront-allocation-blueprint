@@ -1,41 +1,72 @@
 {% extends "common/base.html" %}
-{% load crispy_forms_tags %}
-{% load static %}
-
 
 {% block title %}
-Allocation Blueprint List
+Allocation Blueprints
 {% endblock %}
 
-
 {% block content %}
-
 <div class="mb-3">
-  <h2>Allocation Blueprint List</h2>
+  <h2>Allocation Blueprints</h2>
+  <p class="text-muted">
+    The attributes a new allocation of each resource gets, and their initial values.
+    {% if can_edit_blueprints %}
+      Edit them in the <a href="{% url 'admin:allocation_blueprint_allocationblueprint_changelist' %}">admin</a>.
+    {% endif %}
+  </p>
   <hr>
-</div>  
-
-<div class="card mb-3">
-  <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-bordered table-sm">
-          <tr>
-            <th scope="row" class="text-nowrap">Resource</th>
-            <th scope="row" class="text-nowrap">Attributes</th>
-          </tr>
-          {% for blueprint in allocation_blueprints %}
-          <tr>
-            <th scope="row" class="text-nowrap">{{ blueprint.resource }}</th>
-            <td>
-              {% for attr in blueprint.allocationattributeblueprint_set.all %}
-                {{ attr.allocation_attribute_type.name }}: {{ attr.value }}<br>
-              {% endfor %}
-            </td>
-          </tr>
-          {% endfor %}
-        </table>
-      </div>
-  </div>
 </div>
 
+<div id="allocation-blueprints">
+  {% if allocation_blueprints %}
+    {% regroup allocation_blueprints by resource.resource_type.name as blueprints_by_type %}
+    {% for resource_type in blueprints_by_type %}
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="h5 mb-0">{{ resource_type.grouper }}</h3>
+        </div>
+        <div class="card-body">
+          {% for blueprint in resource_type.list %}
+            <h4 class="h6 mt-2">
+              {{ blueprint.resource.name }}
+              {% if can_edit_blueprints %}
+                <a href="{% url 'admin:allocation_blueprint_allocationblueprint_change' blueprint.pk %}"
+                   class="btn btn-sm btn-secondary ms-2"><i class="fas fa-edit"></i> Edit</a>
+              {% endif %}
+            </h4>
+            {% if blueprint.ordered_attribute_blueprints %}
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th scope="col">Attribute</th>
+                      <th scope="col">Initial value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for attribute_blueprint in blueprint.ordered_attribute_blueprints %}
+                      <tr>
+                        <td>{{ attribute_blueprint.allocation_attribute_type.name }}</td>
+                        <td>
+                          {% if attribute_blueprint.value %}
+                            <code>{{ attribute_blueprint.value }}</code>
+                          {% else %}
+                            <span class="text-muted">(empty)</span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <p class="text-muted">No attributes.</p>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="alert alert-info"><i class="fa fa-info-circle"></i> There are no allocation blueprints to display.</div>
+  {% endif %}
+</div>
 {% endblock %}

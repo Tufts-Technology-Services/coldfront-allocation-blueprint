@@ -1,62 +1,39 @@
-from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
-from django.views import View
-from django.views.generic import DetailView, ListView
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db.models import Prefetch
+from django.views.generic import ListView
 
-from .forms import AllocationBlueprintForm
-from .models import AllocationBlueprint
+from .models import AllocationAttributeBlueprint, AllocationBlueprint
 
 
-class AllocationBlueprintListView(ListView):
-    model = AllocationBlueprint
+class AllocationBlueprintListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
+    """For staff: the attributes each resource's new allocations get, grouped by resource type.
+
+    Read-only. Blueprints are edited in the admin, and the page links there for anyone allowed to.
+    """
+
     template_name = "allocation_blueprint/allocationblueprint_list.html"
     context_object_name = "allocation_blueprints"
 
+    def test_func(self):
+        return self.request.user.is_staff or self.request.user.is_superuser
 
-class AllocationBlueprintDetailView(DetailView):
-    model = AllocationBlueprint
-    template_name = "allocation_blueprint/allocationblueprint_detail.html"
-    context_object_name = "allocation_blueprint"
-
-
-class AllocationBlueprintCreateView(View):
-    def get(self, request):
-        form = AllocationBlueprintForm()
-        return render(request, "allocation_blueprint/allocationblueprint_form.html", {"form": form})
-
-    def post(self, request):
-        form = AllocationBlueprintForm(request.POST)
-        if form.is_valid():
-            allocation_blueprint = form.save()
-            return redirect(reverse("allocation_blueprint_detail", args=[allocation_blueprint.pk]))
-        return render(request, "allocation_blueprint/allocationblueprint_form.html", {"form": form})
-
-
-class AllocationBlueprintUpdateView(View):
-    def get(self, request, pk):
-        allocation_blueprint = get_object_or_404(AllocationBlueprint, pk=pk)
-        form = AllocationBlueprintForm(instance=allocation_blueprint)
-        return render(request, "allocation_blueprint/allocationblueprint_form.html", {"form": form})
-
-    def post(self, request, pk):
-        allocation_blueprint = get_object_or_404(AllocationBlueprint, pk=pk)
-        form = AllocationBlueprintForm(request.POST, instance=allocation_blueprint)
-        if form.is_valid():
-            allocation_blueprint = form.save()
-            return redirect(reverse("allocation_blueprint_detail", args=[allocation_blueprint.pk]))
-        return render(request, "allocation_blueprint/allocationblueprint_form.html", {"form": form})
-
-
-class AllocationBlueprintDeleteView(View):
-    def get(self, request, pk):
-        allocation_blueprint = get_object_or_404(AllocationBlueprint, pk=pk)
-        return render(
-            request,
-            "allocation_blueprint/allocationblueprint_confirm_delete.html",
-            {"allocation_blueprint": allocation_blueprint},
+    def get_queryset(self):
+        # ordered by resource type, then resource, so the template can group them by type
+        return (
+            AllocationBlueprint.objects.select_related("resource__resource_type")
+            .prefetch_related(
+                Prefetch(
+                    "allocationattributeblueprint_set",
+                    queryset=AllocationAttributeBlueprint.objects.select_related("allocation_attribute_type").order_by(
+                        "allocation_attribute_type__name"
+                    ),
+                    to_attr="ordered_attribute_blueprints",
+                )
+            )
+            .order_by("resource__resource_type__name", "resource__name")
         )
 
-    def post(self, request, pk):
-        allocation_blueprint = get_object_or_404(AllocationBlueprint, pk=pk)
-        allocation_blueprint.delete()
-        return redirect(reverse("allocation_blueprint_list"))
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(**kwargs) | {
+            "can_edit_blueprints": self.request.user.has_perm("allocation_blueprint.change_allocationblueprint"),
+        }

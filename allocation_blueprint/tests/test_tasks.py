@@ -2,23 +2,7 @@
 
 import pytest
 
-from allocation_blueprint.models import AllocationBlueprint
 from allocation_blueprint.tasks import BlueprintValueError, apply_blueprint
-
-
-@pytest.fixture
-def make_blueprint(make_attribute_type):
-    """A blueprint for the resource, with {attribute type name: initial value}."""
-
-    def _make(resource, attributes):
-        blueprint = AllocationBlueprint.objects.create(resource=resource)
-        for name, value in attributes.items():
-            blueprint.allocationattributeblueprint_set.create(
-                allocation_attribute_type=make_attribute_type(name), value=value
-            )
-        return blueprint
-
-    return _make
 
 
 def attribute_values(allocation):

@@ -3,7 +3,7 @@
 import pytest
 
 from allocation_blueprint.models import AllocationBlueprint
-from allocation_blueprint.tasks import apply_blueprint
+from allocation_blueprint.tasks import BlueprintValueError, apply_blueprint
 
 
 @pytest.fixture
@@ -79,13 +79,15 @@ def test_an_attribute_the_allocation_already_has_is_left_alone(
     assert attribute_values(allocation) == {"Storage Quota (TB)": "5", "Notes": "none"}
 
 
-def test_a_bad_placeholder_skips_that_attribute_and_reports_it(make_allocation, storage_resource, make_blueprint):
+def test_a_bad_placeholder_fails_the_task_after_creating_the_others(make_allocation, storage_resource, make_blueprint):
     make_blueprint(storage_resource, {"Storage Path": "/cluster/tufts/{project.Group}", "Storage Quota (TB)": "1"})
     allocation = make_allocation(storage_resource)
 
-    result = apply_blueprint(allocation.pk)
+    with pytest.raises(BlueprintValueError) as raised:
+        apply_blueprint(allocation.pk)
 
-    assert result["created_attributes"] == ["Storage Quota (TB)"]
-    assert list(result["failed_attributes"]) == ["Storage Path"]
-    assert "Group" in result["failed_attributes"]["Storage Path"]
+    # names the attribute it couldn't fill in and why, and what it did create
+    assert "Storage Path" in str(raised.value)
+    assert "Group" in str(raised.value)
+    assert "Storage Quota (TB)" in str(raised.value)
     assert attribute_values(allocation) == {"Storage Quota (TB)": "1"}

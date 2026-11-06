@@ -52,7 +52,18 @@ created, and only while the django-q cluster (`coldfront qcluster`) is running.
    It's off by default: with it off, the plugin is installed, and blueprints can be edited, but
    new allocations don't get their attributes.
 
-4. Restart ColdFront and the django-q cluster.
+4. Optionally, mount the staff page that lists the blueprints (see "Viewing blueprints"), in
+   `local_urls.py`:
+
+   ```python
+   from django.urls import include, path
+
+   from coldfront.config.urls import urlpatterns
+
+   urlpatterns.append(path("blueprint/", include("allocation_blueprint.urls")))
+   ```
+
+5. Restart ColdFront and the django-q cluster.
 
 The plugin's two models are new database tables. It doesn't ship migrations yet, so create its
 tables before using it.
@@ -73,6 +84,13 @@ allocation attribute type and its initial value. Add a row for each attribute ne
 should get, and tick **Delete?** on a row to remove it.
 
 The allocation attribute types themselves are ColdFront's, set up as usual.
+
+## Viewing blueprints
+
+With the URLs mounted (installation step 4), staff can see every blueprint at `/blueprint/`,
+without the admin: grouped by resource type, each resource with the attributes its new
+allocations get and their initial values. The page is read-only. Anyone allowed to change
+blueprints also gets a link from each one to its admin page. Users who aren't staff are refused.
 
 ### Initial values
 

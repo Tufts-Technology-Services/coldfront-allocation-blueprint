@@ -1,23 +1,26 @@
 import re
-from coldfront.core.project.models import ProjectAttribute
-from coldfront.core.resource.models import ResourceAttribute 
+
 from coldfront.core.allocation.models import Allocation
+from coldfront.core.project.models import ProjectAttribute
+from coldfront.core.resource.models import ResourceAttribute
 
 
 def render_template_string(template_string, allocation_id):
-    matches = re.findall(r'\{(.*?)\}', template_string)
+    matches = re.findall(r"\{(.*?)\}", template_string)
     context = []
     for match in matches:
         context.append((match, parse_context_reference(match, allocation_id)))
+
     # Extract the key inside braces and return the value from the dict
     def replace_func(match):
-        key = match.group(1) # Contents of the capture group ([^}]+)
+        key = match.group(1)  # Contents of the capture group ([^}]+)
         for context_key, context_value in context:
             if context_key == key:
                 return context_value
         return match.group(0)
+
     # ([^}]+) matches one or more characters that are NOT a closing brace
-    new_text = re.sub(r'\{([^}]+)\}', replace_func, template_string)
+    new_text = re.sub(r"\{([^}]+)\}", replace_func, template_string)
     return new_text
 
 
@@ -28,25 +31,33 @@ def parse_context_reference(reference, allocation_id):
      :param reference: The context reference string to parse.
     :param allocation_id: The ID of the allocation for which to retrieve the context.
     :return: The value of the referenced attribute."""
-    reference_parts = reference.split('.')
+    reference_parts = reference.split(".")
     if len(reference_parts) < 2:
         raise ValueError(f"Invalid context reference: {reference}. Expected format 'model.attribute'.")
     if len(reference_parts) > 2:
-        raise ValueError(f"Invalid context reference: {reference}. Expected format 'model.attribute', but got more than one dot.")
+        raise ValueError(
+            f"Invalid context reference: {reference}. Expected format 'model.attribute', but got more than one dot."
+        )
     model_name = reference_parts[0].strip().lower()
     attribute_name = reference_parts[1].strip().strip('"').strip("'")
-    if model_name not in ['project', 'resource']:
+    if model_name not in ["project", "resource"]:
         raise ValueError(f"Invalid model name in context reference: {model_name}. Expected 'project' or 'resource'.")
     allocation = Allocation.objects.get(id=allocation_id)
-    if model_name == 'project':
-        attribute_match = ProjectAttribute.objects.filter(project=allocation.project, proj_attr_type__name__iexact=attribute_name)
+    if model_name == "project":
+        attribute_match = ProjectAttribute.objects.filter(
+            project=allocation.project, proj_attr_type__name__iexact=attribute_name
+        )
         if not attribute_match.exists():
             raise ValueError(f"Project attribute '{attribute_name}' not found for project '{allocation.project.name}'.")
         return attribute_match.first().value
-    elif model_name == 'resource':
-        attribute_match = ResourceAttribute.objects.filter(resource=allocation.get_parent_resource, resource_attribute_type__name__iexact=attribute_name)
+    elif model_name == "resource":
+        attribute_match = ResourceAttribute.objects.filter(
+            resource=allocation.get_parent_resource, resource_attribute_type__name__iexact=attribute_name
+        )
         if not attribute_match.exists():
-            raise ValueError(f"Resource attribute '{attribute_name}' not found for resource '{allocation.get_parent_resource.name}'.")
+            raise ValueError(
+                f"Resource attribute '{attribute_name}' not found for resource '{allocation.get_parent_resource.name}'."
+            )
         return attribute_match.first().value
 
 
@@ -59,7 +70,7 @@ def get_attribute_value(allocation_id, attribute_blueprint_value):
     :param attribute_blueprint_value: The blueprint value defining the attribute and its value template.
     :return: The rendered attribute value as a string.
     """
-    if '{' in attribute_blueprint_value and '}' in attribute_blueprint_value:
+    if "{" in attribute_blueprint_value and "}" in attribute_blueprint_value:
         return render_template_string(attribute_blueprint_value, allocation_id)
     else:
         return attribute_blueprint_value

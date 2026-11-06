@@ -1,0 +1,3 @@
+# Formatting-only commits, skipped by `git blame`. Add the full hash of any future bulk reformat here.
+# Reformat with the shared ruff setup
+83847c31cbf2896ae6eb22a8fceac462c4db823c

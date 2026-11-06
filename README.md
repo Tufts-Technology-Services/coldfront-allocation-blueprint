@@ -85,8 +85,8 @@ An initial value is used as it is, unless it contains placeholders in braces:
 
 - Attribute names are matched ignoring case, and may be quoted: `{project."Project Key"}`.
 - A value can mix text and several placeholders: `{resource.Root}/{project.Group}`.
-- If the project or resource has no attribute of that name, the task fails, and the allocation
-  is left with only the attributes created before that one. Check the django-q failed tasks.
+- If the project or resource has no attribute of that name, that attribute isn't created, but
+  the others still are. The task's result lists it under `failed_attributes`, with the reason.
 - An empty initial value creates the attribute with an empty value, for someone to fill in later.
 
 ## Development

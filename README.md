@@ -65,7 +65,7 @@ tables before using it.
 
 ## Defining blueprints
 
-Blueprints are managed in the Django admin, under **Allocation_Blueprint › Allocation blueprints**.
+Blueprints are managed in the Django admin, under **Allocation Blueprints › Allocation blueprints**.
 There's one blueprint per resource, and the list shows each with its attributes.
 
 A blueprint's page has its resource and, below it, a table of its attributes: each row is an

@@ -14,6 +14,8 @@ class AllocationBlueprintConfig(AppConfig):
     This class initializes signal receivers based on settings and tests the blueprint client configuration."""
 
     name = "allocation_blueprint"
+    # the admin's name for the app; without it, the label "Allocation_Blueprint"
+    verbose_name = "Allocation Blueprints"
 
     def ready(self):
         if BLUEPRINT_ENABLE_SIGNALS:

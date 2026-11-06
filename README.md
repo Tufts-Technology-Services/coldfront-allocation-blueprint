@@ -85,13 +85,6 @@ should get, and tick **Delete?** on a row to remove it.
 
 The allocation attribute types themselves are ColdFront's, set up as usual.
 
-## Viewing blueprints
-
-With the URLs mounted (installation step 4), staff can see every blueprint at `/blueprint/`,
-without the admin: grouped by resource type, each resource with the attributes its new
-allocations get and their initial values. The page is read-only. Anyone allowed to change
-blueprints also gets a link from each one to its admin page. Users who aren't staff are refused.
-
 ### Initial values
 
 An initial value is used as it is, unless it contains placeholders in braces:
@@ -108,6 +101,23 @@ An initial value is used as it is, unless it contains placeholders in braces:
   so it shows among the django-q failed tasks: create those attributes by hand.
 - An empty initial value creates the attribute with an empty value, for someone to fill in later.
 
+## Viewing blueprints
+
+With the URLs mounted (installation step 4), staff and superusers can see every blueprint at
+`/blueprint/` without opening the admin. The page is read-only:
+
+- Blueprints are grouped by resource type. Each resource is listed with the attributes its new
+  allocations get and their initial values, "(empty)" where there's none.
+- A "How initial values work" box at the top explains the placeholders (see "Initial values").
+- Anyone allowed to change blueprints (superusers, or staff with that permission) also gets an
+  **Edit** button on each resource, opening its admin page.
+- Someone not logged in is sent to log in. A logged-in user who isn't staff is refused.
+
+No menu links to the page by default. To add one to your site's navbar templates, look the URL up
+by its name, `blueprint_list`, with `{% url 'blueprint_list' as blueprint_list_url %}`, and show
+the link only `{% if blueprint_list_url %}`: on a site without the plugin's URLs, that leaves the
+link out instead of breaking every page.
+
 ## Development
 
 ```bash
@@ -119,7 +129,8 @@ uv run pre-commit install
 ```
 
 The tests run against ColdFront's own settings with an in-memory SQLite database
-(`allocation_blueprint/tests/settings.py`).
+(`allocation_blueprint/tests/settings.py`), and mount the plugin's URLs at `blueprint/`, as
+installation step 4 does (`allocation_blueprint/tests/urls.py`).
 
 ## License
 

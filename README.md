@@ -65,11 +65,12 @@ tables before using it.
 
 ## Defining blueprints
 
-Blueprints are managed in the Django admin, in the **Allocation_Blueprint** section:
+Blueprints are managed in the Django admin, under **Allocation_Blueprint › Allocation blueprints**.
+There's one blueprint per resource, and the list shows each with its attributes.
 
-- **Allocation blueprints**: one per resource. Create one and pick the resource.
-- **Allocation attribute blueprints**: the attributes of a blueprint. Each names the blueprint,
-  an allocation attribute type, and the initial value.
+A blueprint's page has its resource and, below it, a table of its attributes: each row is an
+allocation attribute type and its initial value. Add a row for each attribute new allocations
+should get, and tick **Delete?** on a row to remove it.
 
 The allocation attribute types themselves are ColdFront's, set up as usual.
 

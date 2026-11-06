@@ -48,7 +48,9 @@ def parse_context_reference(reference, allocation_id):
             project=allocation.project, proj_attr_type__name__iexact=attribute_name
         )
         if not attribute_match.exists():
-            raise ValueError(f"Project attribute '{attribute_name}' not found for project '{allocation.project.name}'.")
+            raise ValueError(
+                f"Project attribute '{attribute_name}' not found for project '{allocation.project.title}'."
+            )
         return attribute_match.first().value
     elif model_name == "resource":
         attribute_match = ResourceAttribute.objects.filter(

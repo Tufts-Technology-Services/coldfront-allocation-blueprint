@@ -8,6 +8,9 @@ from coldfront.config.settings import *  # noqa: F403
 
 INSTALLED_APPS = [*INSTALLED_APPS, "allocation_blueprint"]  # noqa: F405
 
+# allocation_blueprint/urls.py is mounted by the deployment's local_urls.py, so the tests mount it too
+ROOT_URLCONF = "allocation_blueprint.tests.urls"
+
 # In memory, whatever DB_URL says: ColdFront's settings take the database from it, and in a shell
 # where it names a real server, the tests would create their database there.
 DATABASES = {

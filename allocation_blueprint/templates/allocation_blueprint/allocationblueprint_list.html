@@ -16,6 +16,36 @@ Allocation Blueprints
   <hr>
 </div>
 
+<div class="card mb-3">
+  <div class="card-header">
+    <h3 class="h6 mb-0"><i class="fa fa-info-circle"></i> How initial values work</h3>
+  </div>
+  <div class="card-body">
+    <p>
+      An initial value is used as written, unless it has placeholders in braces. They're filled in
+      from the new allocation's project or resource:
+    </p>
+    <ul>
+      <li><code>{project.&lt;name&gt;}</code>: the value of the project's attribute <code>&lt;name&gt;</code></li>
+      <li><code>{resource.&lt;name&gt;}</code>: the value of the resource's attribute <code>&lt;name&gt;</code></li>
+    </ul>
+    <p>
+      For example, <code>/cluster/tufts/{project.Group}</code> becomes <code>/cluster/tufts/smithlab</code>
+      for a project whose <code>Group</code> attribute is <code>smithlab</code>. Names are matched
+      ignoring case, may be quoted (<code>{project."Project Key"}</code>), and a value can mix text
+      with several placeholders.
+    </p>
+    <ul class="mb-0">
+      <li>
+        If the project or resource has no attribute of that name, that attribute isn't created, but
+        the others are, and the task fails naming it, for someone to fill it in by hand.
+      </li>
+      <li>An attribute the allocation already has is left as it is.</li>
+      <li>An empty initial value creates the attribute with an empty value.</li>
+    </ul>
+  </div>
+</div>
+
 <div id="allocation-blueprints">
   {% if allocation_blueprints %}
     {% regroup allocation_blueprints by resource.resource_type.name as blueprints_by_type %}

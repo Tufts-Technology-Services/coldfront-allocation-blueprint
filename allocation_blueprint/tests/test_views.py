@@ -73,3 +73,11 @@ def test_only_someone_who_can_change_blueprints_gets_a_link_to_edit_them(
 def test_the_other_blueprint_pages_are_gone(name):
     with pytest.raises(NoReverseMatch):
         reverse(name, args=[1])
+
+
+def test_the_page_explains_how_initial_values_are_filled_in(staff_client):
+    html = staff_client.get(reverse("blueprint_list")).content.decode()
+
+    assert "How initial values work" in html
+    assert "{project.&lt;name&gt;}" in html
+    assert "{resource.&lt;name&gt;}" in html

@@ -31,7 +31,17 @@ def apply_blueprint(allocation_id):
                         allocation=allocation,
                     )
         logger.info(f"Created allocation attributes for allocation {allocation.id} based on blueprint {blueprint.id}")
+        return {
+            "created_attributes": [
+                attribute_blueprint.allocation_attribute_type.name for attribute_blueprint in attribute_blueprints
+            ],
+            "message": f"Created allocation attributes for allocation {allocation.id} based on blueprint {blueprint.id}",
+        }
     else:
         logger.debug(
             f"No allocation blueprint found for resource {allocation.get_parent_resource.name}. No attributes created for allocation {allocation.id}."
         )
+        return {
+            "created_attributes": [],
+            "message": f"No allocation blueprint found for resource {allocation.get_parent_resource.name}. No attributes created for allocation {allocation.id}.",
+        }

@@ -1,6 +1,8 @@
 import importlib
 import logging
+
 from django.apps import AppConfig
+
 from .constants import BLUEPRINT_ENABLE_SIGNALS
 
 logger = logging.getLogger(__name__)

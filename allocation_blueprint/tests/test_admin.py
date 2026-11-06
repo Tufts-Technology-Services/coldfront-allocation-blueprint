@@ -85,3 +85,22 @@ def test_the_blueprint_list_shows_each_blueprints_attributes(admin_client):
 
     assert response.status_code == 200
     assert "Storage Quota (TB): 1" in response.content.decode()
+
+
+def test_the_blueprint_list_marks_an_attribute_with_no_initial_value(admin_client):
+    blueprint = AllocationBlueprint.objects.create(resource=make_resource("hpc-storage"))
+    blueprint.allocationattributeblueprint_set.create(allocation_attribute_type=make_attribute_type("Notes"), value="")
+    blueprint.allocationattributeblueprint_set.create(
+        allocation_attribute_type=make_attribute_type("Owner"), value=None
+    )
+
+    response = admin_client.get(reverse("admin:allocation_blueprint_allocationblueprint_changelist"))
+
+    assert "Notes: (empty), Owner: (empty)" in response.content.decode()
+
+
+def test_the_admin_section_is_called_allocation_blueprints(admin_client):
+    response = admin_client.get(reverse("admin:index"))
+
+    assert "Allocation Blueprints" in response.content.decode()
+    assert "Allocation_Blueprint" not in response.content.decode()

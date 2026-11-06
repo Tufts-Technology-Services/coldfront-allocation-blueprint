@@ -30,9 +30,15 @@ class AllocationBlueprintAdmin(admin.ModelAdmin):
 
     @admin.display(description="Attributes")
     def attribute_summary(self, blueprint):
-        """Each attribute as "<type>: <initial value>", in name order, comma-separated."""
+        """Each attribute as "<type>: <initial value>", in name order, comma-separated.
+
+        An attribute with no initial value shows "(empty)", rather than nothing or "None".
+        """
         attribute_blueprints = sorted(
             blueprint.allocationattributeblueprint_set.all(),
             key=lambda attribute_blueprint: attribute_blueprint.allocation_attribute_type.name,
         )
-        return ", ".join(str(attribute_blueprint) for attribute_blueprint in attribute_blueprints)
+        return ", ".join(
+            f"{attribute_blueprint.allocation_attribute_type.name}: {attribute_blueprint.value or '(empty)'}"
+            for attribute_blueprint in attribute_blueprints
+        )

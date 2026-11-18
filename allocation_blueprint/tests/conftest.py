@@ -37,12 +37,12 @@ def storage_resource(db):
 
 @pytest.fixture
 def make_allocation(project):
-    """An allocation of the project, on the given resources (none if not given)."""
+    """An allocation of the project, on the given resources (none if not given), with the named status."""
 
-    def _make(*resources):
+    def _make(*resources, status="New"):
         allocation = Allocation.objects.create(
             project=project,
-            status=AllocationStatusChoice.objects.get_or_create(name="New")[0],
+            status=AllocationStatusChoice.objects.get_or_create(name=status)[0],
             justification="because",
         )
         allocation.resources.add(*resources)

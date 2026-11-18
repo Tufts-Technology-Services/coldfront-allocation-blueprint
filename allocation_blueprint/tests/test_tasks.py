@@ -3,7 +3,12 @@ checks existing allocations against their blueprints."""
 
 import pytest
 
-from allocation_blueprint.tasks import BlueprintValueError, apply_blueprint, check_blueprint_attributes
+from allocation_blueprint.tasks import (
+    BlueprintValueError,
+    apply_blueprint,
+    check_blueprint_attributes,
+    report_blueprint_differences,
+)
 
 
 def attribute_values(allocation):
@@ -191,3 +196,67 @@ def test_check_reports_a_bad_placeholder_and_carries_on(make_allocation, storage
     assert "Group" in result["failed"][0]["reason"]
     assert attribute_values(first) == {"Storage Quota (TB)": "1"}
     assert attribute_values(second) == {"Storage Quota (TB)": "1"}
+
+
+# report_blueprint_differences
+
+
+def test_report_lists_what_would_be_created_without_creating_it(
+    make_allocation, storage_resource, make_blueprint, make_project_attribute
+):
+    make_project_attribute("Group", "smithlab")
+    make_blueprint(storage_resource, {"Storage Path": "/cluster/tufts/{project.Group}", "Notes": ""})
+    allocation = make_allocation(storage_resource, status="Active")
+
+    result = report_blueprint_differences()
+
+    assert result["checked"] == 1
+    assert result["missing"] == [
+        {"allocation": allocation.pk, "attribute": "Storage Path", "value": "/cluster/tufts/smithlab"},
+        {"allocation": allocation.pk, "attribute": "Notes", "value": ""},
+    ]
+    assert attribute_values(allocation) == {}
+
+
+def test_report_lists_mismatches_that_differ_only_in_case(
+    make_allocation, storage_resource, make_blueprint, make_attribute_type
+):
+    make_blueprint(storage_resource, {"vast_path": "/smb/smithlab"})
+    allocation = make_allocation(storage_resource, status="Active")
+    allocation.allocationattribute_set.create(
+        allocation_attribute_type=make_attribute_type("vast_path"), value="/smb/SmithLab"
+    )
+
+    result = report_blueprint_differences()
+
+    assert result["missing"] == []
+    assert result["mismatches"] == [
+        {"allocation": allocation.pk, "attribute": "vast_path", "expected": "/smb/smithlab", "actual": "/smb/SmithLab"}
+    ]
+    assert attribute_values(allocation) == {"vast_path": "/smb/SmithLab"}
+
+
+def test_report_checks_only_active_allocations_with_a_blueprint(
+    make_allocation, storage_resource, make_resource, make_blueprint
+):
+    make_blueprint(storage_resource, {"Storage Quota (TB)": "1"})
+    active = make_allocation(storage_resource, status="Active")
+    make_allocation(storage_resource, status="Expired")
+    make_allocation(make_resource("cluster", "Cluster"), status="Active")
+
+    result = report_blueprint_differences()
+
+    assert result["checked"] == 1
+    assert [entry["allocation"] for entry in result["missing"]] == [active.pk]
+
+
+def test_report_lists_a_bad_placeholder(make_allocation, storage_resource, make_blueprint):
+    make_blueprint(storage_resource, {"Storage Path": "/cluster/tufts/{project.Group}"})
+    allocation = make_allocation(storage_resource, status="Active")
+
+    result = report_blueprint_differences()
+
+    assert [(entry["allocation"], entry["attribute"]) for entry in result["failed"]] == [
+        (allocation.pk, "Storage Path")
+    ]
+    assert result["missing"] == []

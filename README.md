@@ -129,6 +129,16 @@ or queue it, or schedule it in the admin under **Django Q › Scheduled tasks**,
 `allocation_blueprint.tasks.check_blueprint_attributes` and no arguments. Its result is then
 under **Successful tasks**.
 
+To see what it would do first, run `allocation_blueprint.tasks.report_blueprint_differences`
+the same way. It checks the same allocations but changes nothing: its result lists the
+attributes that are missing under `missing`, each with the value it would be created with,
+alongside `checked`, `mismatches` and `failed`.
+
+Values are compared exactly, case included, since paths such as `vast_path` are case-sensitive.
+When a value is built from a project attribute, e.g. `/smb/{project.Group}`, a mismatch
+that differs only in case usually means the project attribute is cased differently from the
+share: fix the project attribute, not the allocation.
+
 ## Viewing blueprints
 
 With the URLs mounted (installation step 4), staff and superusers can see every blueprint at

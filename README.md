@@ -101,6 +101,34 @@ An initial value is used as it is, unless it contains placeholders in braces:
   so it shows among the django-q failed tasks: create those attributes by hand.
 - An empty initial value creates the attribute with an empty value, for someone to fill in later.
 
+## Checking existing allocations
+
+`allocation_blueprint.tasks.check_blueprint_attributes` checks Active allocations against their
+resource's blueprint, e.g. after a blueprint gains an attribute, or for allocations made before
+the plugin was turned on. It doesn't need `BLUEPRINT_ENABLE_SIGNALS`.
+
+- A missing attribute is created with the blueprint's initial value, placeholders filled in as
+  for a new allocation.
+- An attribute whose value differs from the blueprint's is left alone and listed under
+  `mismatches`, with the expected and actual values. Initial values are only a starting point, so
+  a mismatch may well be right (a quota that's been raised): it's for someone to look at. An
+  attribute whose initial value is empty never mismatches.
+- A placeholder that can't be filled in is listed under `failed`, with the reason. Unlike
+  `apply_blueprint`, the task carries on and doesn't fail, so the result keeps the rest.
+
+The result also has `checked` (how many allocations) and `created`. Run it once from `coldfront
+shell`:
+
+```python
+from allocation_blueprint.tasks import check_blueprint_attributes
+
+check_blueprint_attributes()
+```
+
+or queue it, or schedule it in the admin under **Django Q › Scheduled tasks**, with the function
+`allocation_blueprint.tasks.check_blueprint_attributes` and no arguments. Its result is then
+under **Successful tasks**.
+
 ## Viewing blueprints
 
 With the URLs mounted (installation step 4), staff and superusers can see every blueprint at

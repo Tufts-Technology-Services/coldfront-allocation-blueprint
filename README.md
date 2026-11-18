@@ -113,10 +113,15 @@ the plugin was turned on. It doesn't need `BLUEPRINT_ENABLE_SIGNALS`.
   `mismatches`, with the expected and actual values. Initial values are only a starting point, so
   a mismatch may well be right (a quota that's been raised): it's for someone to look at. An
   attribute whose initial value is empty never mismatches.
+- An attribute whose value differs from the blueprint's only in case is left alone too, and listed
+  under `case_differences` instead (see below).
+- On an allocation with a case difference, missing attributes aren't created. They're listed under
+  `not_created`, with the value the blueprint gives and the reason, for someone to fill in by hand.
 - A placeholder that can't be filled in is listed under `failed`, with the reason. Unlike
   `apply_blueprint`, the task carries on and doesn't fail, so the result keeps the rest.
 
-The result also has `checked` (how many allocations) and `created`. Run it once from `coldfront
+Existing values are never changed. The result also has `checked` (how many allocations) and
+`created`. Run it once from `coldfront
 shell`:
 
 ```python
@@ -132,12 +137,21 @@ under **Successful tasks**.
 To see what it would do first, run `allocation_blueprint.tasks.report_blueprint_differences`
 the same way. It checks the same allocations but changes nothing: its result lists the
 attributes that are missing under `missing`, each with the value it would be created with,
-alongside `checked`, `mismatches` and `failed`.
+alongside `checked`, `mismatches`, `case_differences`, `not_created` and `failed`.
+
+### Values that differ only in case
 
 Values are compared exactly, case included, since paths such as `vast_path` are case-sensitive.
-When a value is built from a project attribute, e.g. `/smb/{project.Group}`, a mismatch
-that differs only in case usually means the project attribute is cased differently from the
-share: fix the project attribute, not the allocation.
+Some older shares have mixed-case names, e.g. `/smb/WhittierLab`, while the project keys their
+blueprint values are built from are lowercase. Those values are right as they are: they name
+shares that exist, so don't change them or the project attribute. They're listed under
+`case_differences` rather than `mismatches`, so they don't bury the differences that need looking
+at.
+
+Such an allocation's names don't follow its blueprint, so a value made from the blueprint could
+name the wrong share: a missing `vast_path` made from the lowercase key would point at
+`/smb/whittierlab`, not the existing `/smb/WhittierLab`. So nothing is created on it; check what
+`not_created` lists and add those attributes by hand.
 
 ## Viewing blueprints
 

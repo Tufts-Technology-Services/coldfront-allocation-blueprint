@@ -64,10 +64,20 @@ def apply_blueprint(allocation_id):
 def compare_with_blueprints(create_missing):
     """Compare every active allocation of a resource with a blueprint against that blueprint.
 
-    Returns ``(checked, missing, mismatches, failed)``: how many allocations were checked, and lists
-    of the attributes they're missing (with the value they'd get), the existing attributes whose
-    values differ, and the values whose placeholders couldn't be filled in. With ``create_missing``,
-    the missing attributes are created as well.
+    Returns a dict of ``checked``, how many allocations were checked, and these lists:
+
+    - ``missing``: attributes an allocation doesn't have, with the value they'd get. With
+      ``create_missing``, they're created as well.
+    - ``mismatches``: existing attributes whose values differ from the blueprint's.
+    - ``case_differences``: existing attributes whose values differ from the blueprint's only in case.
+      Older shares can have mixed-case names while project keys are lowercase, so these are expected;
+      they're kept apart so they don't bury the mismatches.
+    - ``not_created``: missing attributes of allocations with a case difference. Such an allocation's
+      names aren't the blueprint's, so a value made from the blueprint could name the wrong share; these
+      are never created, and someone fills them in by hand.
+    - ``failed``: values whose placeholders couldn't be filled in.
+
+    Existing values are never changed.
     """
     blueprints = {
         blueprint.resource_id: blueprint
@@ -79,7 +89,8 @@ def compare_with_blueprints(create_missing):
         Allocation.objects.filter(status__name="Active", resources__in=list(blueprints)).distinct().order_by("pk")
     )
 
-    checked, missing, mismatches, failed = 0, [], [], []
+    checked = 0
+    found = {name: [] for name in ("missing", "mismatches", "case_differences", "not_created", "failed")}
     for allocation in allocations:
         # the same resource apply_blueprint would take the blueprint from
         resource = allocation.get_parent_resource
@@ -91,6 +102,9 @@ def compare_with_blueprints(create_missing):
         for attribute in allocation.allocationattribute_set.all():
             existing.setdefault(attribute.allocation_attribute_type_id, []).append(attribute.value)
 
+        # the whole allocation is compared before anything is created: whether to create depends on
+        # every attribute, whatever order the blueprint lists them in
+        missing, case_differences = [], []
         for attribute_blueprint in blueprint.allocationattributeblueprint_set.all():
             attribute_type = attribute_blueprint.allocation_attribute_type
             current = existing.get(attribute_type.pk)
@@ -100,20 +114,42 @@ def compare_with_blueprints(create_missing):
             try:
                 expected = blueprint_value_for(allocation.pk, attribute_blueprint)
             except ValueError as e:
-                failed.append({"allocation": allocation.pk, "attribute": attribute_type.name, "reason": str(e)})
+                found["failed"].append(
+                    {"allocation": allocation.pk, "attribute": attribute_type.name, "reason": str(e)}
+                )
                 continue
             if current is None:
-                if create_missing:
-                    allocation.allocationattribute_set.create(allocation_attribute_type=attribute_type, value=expected)
-                missing.append({"allocation": allocation.pk, "attribute": attribute_type.name, "value": expected})
+                missing.append((attribute_type, expected))
                 continue
-            mismatches.extend(
-                {"allocation": allocation.pk, "attribute": attribute_type.name, "expected": expected, "actual": value}
-                for value in current
-                if value != expected
-            )
+            for value in current:
+                if value == expected:
+                    continue
+                difference = {
+                    "allocation": allocation.pk,
+                    "attribute": attribute_type.name,
+                    "expected": expected,
+                    "actual": value,
+                }
+                if value.lower() == expected.lower():
+                    case_differences.append(difference)
+                else:
+                    found["mismatches"].append(difference)
 
-    return checked, missing, mismatches, failed
+        found["case_differences"].extend(case_differences)
+        differing = ", ".join(dict.fromkeys(difference["attribute"] for difference in case_differences))
+        for attribute_type, value in missing:
+            entry = {"allocation": allocation.pk, "attribute": attribute_type.name, "value": value}
+            if case_differences:
+                reason = (
+                    f"its {differing} differ from the blueprint only in case, so this value may name the wrong share"
+                )
+                found["not_created"].append({**entry, "reason": reason})
+                continue
+            if create_missing:
+                allocation.allocationattribute_set.create(allocation_attribute_type=attribute_type, value=value)
+            found["missing"].append(entry)
+
+    return {"checked": checked, **found}
 
 
 def check_blueprint_attributes():
@@ -121,20 +157,24 @@ def check_blueprint_attributes():
 
     Goes through the Active allocations of every resource that has a blueprint. A missing attribute
     is created with the blueprint's initial value, placeholders filled in as ``apply_blueprint``
-    does. An existing attribute whose value differs from the blueprint's is left as it is and
-    reported as a mismatch; a blueprint attribute with no initial value never mismatches.
+    does, unless the allocation has a value differing from the blueprint's only in case (see
+    ``compare_with_blueprints``). An existing attribute whose value differs from the blueprint's is
+    left as it is and reported; a blueprint attribute with no initial value never differs.
 
-    Returns a dict with ``checked`` (how many allocations), ``created``, ``mismatches`` and
-    ``failed`` (placeholders that couldn't be filled in), each a list of dicts naming the
-    allocation and attribute, and a ``message``.
+    Returns a dict with ``checked`` (how many allocations), ``created``, ``mismatches``,
+    ``case_differences``, ``not_created`` and ``failed`` (placeholders that couldn't be filled in),
+    each a list of dicts naming the allocation and attribute, and a ``message``.
     """
-    checked, created, mismatches, failed = compare_with_blueprints(create_missing=True)
+    found = compare_with_blueprints(create_missing=True)
+    found["created"] = found.pop("missing")
     message = (
-        f"Checked {checked} active allocations against their blueprints: created {len(created)} attributes, "
-        f"found {len(mismatches)} mismatches, couldn't fill in {len(failed)} values."
+        f"Checked {found['checked']} active allocations against their blueprints: created {len(found['created'])} "
+        f"attributes ({len(found['not_created'])} not created, on allocations differing in case), found "
+        f"{len(found['mismatches'])} mismatches and {len(found['case_differences'])} differing only in case, "
+        f"couldn't fill in {len(found['failed'])} values."
     )
     logger.info(message)
-    return {"checked": checked, "created": created, "mismatches": mismatches, "failed": failed, "message": message}
+    return {**found, "message": message}
 
 
 def report_blueprint_differences():
@@ -142,15 +182,18 @@ def report_blueprint_differences():
 
     Checks the same allocations, in the same way, as ``check_blueprint_attributes``, but where that
     task creates a missing attribute this one lists it under ``missing`` with the value it would be
-    created with.
+    created with. ``not_created`` lists what that task wouldn't create.
 
-    Returns a dict with ``checked`` (how many allocations), ``missing``, ``mismatches`` and
-    ``failed``, each a list of dicts naming the allocation and attribute, and a ``message``.
+    Returns a dict with ``checked`` (how many allocations), ``missing``, ``mismatches``,
+    ``case_differences``, ``not_created`` and ``failed``, each a list of dicts naming the allocation
+    and attribute, and a ``message``.
     """
-    checked, missing, mismatches, failed = compare_with_blueprints(create_missing=False)
+    found = compare_with_blueprints(create_missing=False)
     message = (
-        f"Checked {checked} active allocations against their blueprints, changing nothing: "
-        f"{len(missing)} attributes missing, {len(mismatches)} mismatches, couldn't fill in {len(failed)} values."
+        f"Checked {found['checked']} active allocations against their blueprints, changing nothing: "
+        f"{len(found['missing'])} attributes missing ({len(found['not_created'])} more that wouldn't be created, on "
+        f"allocations differing in case), {len(found['mismatches'])} mismatches and "
+        f"{len(found['case_differences'])} differing only in case, couldn't fill in {len(found['failed'])} values."
     )
     logger.info(message)
-    return {"checked": checked, "missing": missing, "mismatches": mismatches, "failed": failed, "message": message}
+    return {**found, "message": message}
